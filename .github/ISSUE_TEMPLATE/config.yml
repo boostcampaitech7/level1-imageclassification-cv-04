@@ -1,0 +1,5 @@
+issue_template:
+  - name: "실험 템플릿"
+    description: "하이퍼파라미터 수정등 모델 실험을 기록하는 템플릿입니다."
+    title: "[Experiment]: "
+    file: "experiment_issue_template.md"
