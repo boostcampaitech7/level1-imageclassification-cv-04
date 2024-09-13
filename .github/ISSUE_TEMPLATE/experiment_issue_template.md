@@ -1,3 +1,10 @@
+---
+name: 실험 가설 및 결과 설명
+about: Create a report for an experiment
+title: "[EXPERIMENT] "
+labels: experiment
+assignees: ''
+---
 
 ## 📌 가설 (Hypothesis)
 
