@@ -27,9 +27,11 @@ project/
 ----
 ## Experiment (~24.09.20)
 ### Experiment 규칙
+<br>
 Step1 .  반드시 Kanban에 실험 계획을 올려주세요
-Step2. 실험 후 실험 내용은 브랜치 명 "exp/{실험할 내용}"으로 깃에 올려주세요.
-  + 실험 결과는 [구글 시트](https://docs.google.com/spreadsheets/d/1tuTotQ_ALJQyJPzXt2NMeeyWfkm5csweRrYfWxnff8A/edit?gid=0#gid=0)에 기록해주세요
+<br>
+  Step2. 실험 후 실험 내용은 브랜치 명 "exp/{실험할 내용}"으로 깃에 올려주세요.<br>
+ Step3.  실험 결과는 구글 시트에 기록해주세요
 
 ### Hyperparameter Tuning Experiment
 - Write in [Google sheet](https://docs.google.com/spreadsheets/d/1tuTotQ_ALJQyJPzXt2NMeeyWfkm5csweRrYfWxnff8A/edit?usp=sharing)
