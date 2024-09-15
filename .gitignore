@@ -1,5 +1,5 @@
-/data
-/train_result
+data/
+train_result/
 output.csv
 
 # Created by https://www.toptal.com/developers/gitignore/api/visualstudiocode,python,linux
