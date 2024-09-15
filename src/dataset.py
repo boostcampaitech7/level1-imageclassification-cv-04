@@ -1,16 +1,17 @@
 import os
-import torch
 import cv2
+import torch
+import numpy as np
 import pandas as pd
 from torch.utils.data import Dataset
-from typing import Tuple, Any, Callable, Union
+from typing import Union, Tuple
 
 class CustomDataset(Dataset):
     def __init__(
         self, 
         root_dir: str, 
         info_df: pd.DataFrame, 
-        transform: Callable,
+        transform: callable,
         is_inference: bool = False
     ):
         self.root_dir = root_dir

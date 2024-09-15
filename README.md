@@ -1,26 +1,25 @@
 
 ### Project Structure
 ```
-project/
-├── main.py
-├── requirements.txt
-├── config.py
+project_root/
+│
 ├── data/
 │   ├── train/
-│   ├── test/
-│   ├── train.csv
-│   └── test.csv
-├── models/
-│   ├── __init__.py
-│   ├── simple_cnn.py
-│   ├── torchvision_model.py
-│   └── timm_model.py
-├── utils/
+│   └── test/
+│
+├── src/
 │   ├── __init__.py
 │   ├── dataset.py
 │   ├── transforms.py
-│   └── trainer.py
-└── inference.py
+│   ├── models.py
+│   ├── trainer.py
+│   └── utils.py
+│
+├── main.py
+├── train.py
+├── inference.py
+├── requirements.txt
+└── README.md
 ```
 
 
@@ -42,4 +41,5 @@ Step1 .  반드시 Kanban에 실험 계획을 올려주세요
 1. main 브랜치는 건들지 말아주세요
 2. feature 관련 브랜치명은 "feat/{구현할 내용}".
 3. 각종 실험 관련 브랜치명은 "exp/{실험할내용}".
+4. 수정 사항 관련 브랜치명은 "fix/{수정할 내용}"
    

@@ -1,18 +1,27 @@
 import os
 import torch
-from torch.utils.data import DataLoader
+import torch.nn as nn
+import torch.optim as optim
 from tqdm.auto import tqdm
+
+class Loss(nn.Module):
+    def __init__(self):
+        super(Loss, self).__init__()
+        self.loss_fn = nn.CrossEntropyLoss()
+
+    def forward(self, outputs: torch.Tensor, targets: torch.Tensor) -> torch.Tensor:
+        return self.loss_fn(outputs, targets)
 
 class Trainer:
     def __init__(
         self, 
-        model: torch.nn.Module, 
+        model: nn.Module, 
         device: torch.device, 
-        train_loader: DataLoader, 
-        val_loader: DataLoader, 
-        optimizer: torch.optim.Optimizer,
-        scheduler: torch.optim.lr_scheduler,
-        loss_fn: torch.nn.modules.loss._Loss, 
+        train_loader: torch.utils.data.DataLoader, 
+        val_loader: torch.utils.data.DataLoader, 
+        optimizer: optim.Optimizer,
+        scheduler: optim.lr_scheduler,
+        loss_fn: nn.Module, 
         epochs: int,
         result_path: str
     ):
@@ -32,14 +41,12 @@ class Trainer:
         os.makedirs(self.result_path, exist_ok=True)
         current_model_path = os.path.join(self.result_path, f'model_epoch_{epoch}_loss_{loss:.4f}.pt')
         torch.save(self.model.state_dict(), current_model_path)
-
         self.best_models.append((loss, epoch, current_model_path))
         self.best_models.sort()
         if len(self.best_models) > 3:
             _, _, path_to_remove = self.best_models.pop(-1)
             if os.path.exists(path_to_remove):
                 os.remove(path_to_remove)
-
         if loss < self.lowest_loss:
             self.lowest_loss = loss
             best_model_path = os.path.join(self.result_path, 'best_model.pt')
@@ -50,7 +57,6 @@ class Trainer:
         self.model.train()
         total_loss = 0.0
         progress_bar = tqdm(self.train_loader, desc="Training", leave=False)
-        
         for images, targets in progress_bar:
             images, targets = images.to(self.device), targets.to(self.device)
             self.optimizer.zero_grad()
@@ -61,14 +67,12 @@ class Trainer:
             self.scheduler.step()
             total_loss += loss.item()
             progress_bar.set_postfix(loss=loss.item())
-        
         return total_loss / len(self.train_loader)
 
     def validate(self) -> float:
         self.model.eval()
         total_loss = 0.0
         progress_bar = tqdm(self.val_loader, desc="Validating", leave=False)
-        
         with torch.no_grad():
             for images, targets in progress_bar:
                 images, targets = images.to(self.device), targets.to(self.device)
@@ -76,7 +80,6 @@ class Trainer:
                 loss = self.loss_fn(outputs, targets)
                 total_loss += loss.item()
                 progress_bar.set_postfix(loss=loss.item())
-        
         return total_loss / len(self.val_loader)
 
     def train(self) -> None:
@@ -86,3 +89,4 @@ class Trainer:
             val_loss = self.validate()
             print(f"Epoch {epoch+1}, Train Loss: {train_loss:.4f}, Validation Loss: {val_loss:.4f}\n")
             self.save_model(epoch, val_loss)
+            self.scheduler.step()
