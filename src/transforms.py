@@ -1,5 +1,6 @@
 import albumentations as A
 from albumentations.pytorch import ToTensorV2
+from PIL import Image
 
 class TransformSelector:
     def __init__(self, transform_type: str):
