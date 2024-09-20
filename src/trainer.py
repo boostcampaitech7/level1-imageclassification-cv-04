@@ -86,7 +86,7 @@ class Trainer:
                 total_loss += loss.item()
                 progress_bar.set_postfix(loss=loss.item())
                 if log_wrong_predictions:
-                    self.save_wrong_image(self.wrong_path, images, outputs, targets)
+                    self.save_wrong_image(images, outputs, targets)
         return total_loss / len(self.val_loader)
 
     def train(self) -> None:
