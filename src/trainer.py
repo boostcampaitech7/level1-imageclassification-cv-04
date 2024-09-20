@@ -27,7 +27,7 @@ class Trainer:
         loss_fn: nn.Module, 
         epochs: int,
         result_path: str,
-        wrong_path: str
+        wrong_path: str=None
     ):
         self.model = model
         self.device = device
