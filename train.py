@@ -39,7 +39,7 @@ def main():
     val_loader = DataLoader(val_dataset, batch_size=64, shuffle=False)
 
     # Set up model
-    model_selector = ModelSelector(model_type='timm', num_classes=num_classes, model_name='eva02_large_patch14_448.mim_m38m_ft_in22k_in1k', pretrained=True)
+    model_selector = ModelSelector(model_type='timm', num_classes=num_classes, model_name='resnet18', pretrained=True)
     model = model_selector.get_model()
     model = layer_modification(model)
     model.to(device)
@@ -49,8 +49,8 @@ def main():
     scheduler_gamma = 0.1  # 학습률을 현재의 10%로 감소
     # 한 epoch당 step 수 계산
     steps_per_epoch = len(train_loader)
-    # 4 epoch마다 학습률을 감소시키는 스케줄러 선언
-    epochs_per_lr_decay = 4
+    # 2 epoch마다 학습률을 감소시키는 스케줄러 선언
+    epochs_per_lr_decay = 2
     scheduler_step_size = steps_per_epoch * epochs_per_lr_decay
 
     optimizer = optim.Adam(model.parameters(), lr=0.001)
@@ -64,7 +64,7 @@ def main():
         optimizer=optimizer,
         scheduler=scheduler,
         loss_fn=Loss(), 
-        epochs=18,
+        epochs=5,
         result_path=save_result_path,
         wrong_path=wrong_prediction_path
     )    
