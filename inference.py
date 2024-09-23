@@ -29,7 +29,7 @@ def main():
     test_loader = DataLoader(test_dataset, batch_size=64, shuffle=False, drop_last=False)
 
     # Load model
-    model_selector = ModelSelector(model_type='timm', num_classes=num_classes, model_name='resnet18', pretrained=False)
+    model_selector = ModelSelector(model_type='timm', num_classes=num_classes, model_name='eva02_large_patch14_448.mim_m38m_ft_in22k_in1k', pretrained=False)
     model = model_selector.get_model()
     
     # Load the best model from ./train_result/best_model.pt

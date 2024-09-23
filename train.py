@@ -47,8 +47,8 @@ def main():
     scheduler_gamma = 0.1  # 학습률을 현재의 10%로 감소
     # 한 epoch당 step 수 계산
     steps_per_epoch = len(train_loader)
-    # 2 epoch마다 학습률을 감소시키는 스케줄러 선언
-    epochs_per_lr_decay = 2 
+    # 2 -> 4 epoch마다 학습률을 감소시키는 스케줄러 선언
+    epochs_per_lr_decay = 4 
     scheduler_step_size = steps_per_epoch * epochs_per_lr_decay
 
     optimizer = optim.Adam(model.parameters(), lr=0.001)
