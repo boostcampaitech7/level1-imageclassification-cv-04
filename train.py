@@ -8,14 +8,19 @@ import argparse
 from src.dataset import CustomDataset
 from src.transforms import TransformSelector
 from src.models import ModelSelector
-from src.trainer import Trainer, Loss
-
+from src.trainer import Trainer, Loss, Focal_CELoss
+from src.layer_modification import layer_modification
 def main(args):
     # Set device
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     # Load data
-    train_info = pd.read_csv(args.traindata_info_file)
+    traindata_dir = "./data/train"
+    traindata_info_file = "./data/train.csv"
+    save_result_path = "./train_result"
+    wrong_prediction_path = "./wrong_prediction"
+
+    train_info = pd.read_csv(traindata_info_file)
     num_classes = len(train_info['target'].unique())
 
     # Split data
@@ -37,6 +42,7 @@ def main(args):
     # Set up model
     model_selector = ModelSelector(model_type=args.model_type, num_classes=num_classes, model_name=args.model_name, pretrained=args.pretrained)
     model = model_selector.get_model()
+    model = layer_modification(model)
     model.to(device)
 
     # Scheduler initialization
@@ -59,7 +65,6 @@ def main(args):
         result_path=args.save_result_path
     )
     trainer.train()
-
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Train image classification model")
     parser.add_argument("--traindata_dir", type=str, default="./data/train", help="Path to training data directory")
