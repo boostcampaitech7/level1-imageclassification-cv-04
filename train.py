@@ -50,7 +50,7 @@ def main():
     # 한 epoch당 step 수 계산
     steps_per_epoch = len(train_loader)
     # 2 epoch마다 학습률을 감소시키는 스케줄러 선언
-    epochs_per_lr_decay = 2
+    epochs_per_lr_decay = 2 
     scheduler_step_size = steps_per_epoch * epochs_per_lr_decay
 
     optimizer = optim.Adam(model.parameters(), lr=0.001)
@@ -65,8 +65,7 @@ def main():
         scheduler=scheduler,
         loss_fn=Loss(), 
         epochs=5,
-        result_path=save_result_path,
-        wrong_path=wrong_prediction_path
+        result_path=save_result_path
     )    
     trainer.train()
 if __name__ == "__main__":
