@@ -18,7 +18,7 @@ os.makedirs("images", exist_ok=True)
 
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--n_epochs', type=int, default=100000)
+parser.add_argument('--n_epochs', type=int, default=50000)
 parser.add_argument('--batch_size', type=int, default=8)
 parser.add_argument('--lr',type=float,default=0.0002) # ADAM: Learning Rate
 parser.add_argument('--b1',type=float,default=0.5) # ADAM: Decay of first order momentum of gradient (찾아보기)

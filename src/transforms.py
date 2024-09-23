@@ -26,8 +26,9 @@ class AlbumentationsTransform:
             self.transform = A.Compose(
                 [
                     A.HorizontalFlip(p=0.5),
-                    A.Rotate(limit=15),
-                    A.RandomBrightnessContrast(p=0.2),
+                    A.Rotate(limit=20),
+                    A.RandomBrightnessContrast(p=0.25),
+                    A.Blur()
                 ] + common_transforms
             )
         else:

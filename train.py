@@ -7,9 +7,8 @@ import torch.optim as optim
 from src.dataset import CustomDataset
 from src.transforms import TransformSelector
 from src.models import ModelSelector
-from src.trainer import Trainer, Loss
-from src.freeze import freeze
-
+from src.trainer import Trainer, Loss, Focal_CELoss
+from src.layer_modification import layer_modification
 def main():
     # Set device
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -42,7 +41,7 @@ def main():
     # Set up model
     model_selector = ModelSelector(model_type='timm', num_classes=num_classes, model_name='eva02_large_patch14_448.mim_m38m_ft_in22k_in1k', pretrained=True)
     model = model_selector.get_model()
-    model = freeze(model)
+    model = layer_modification(model)
     model.to(device)
 
     # 스케줄러 초기화
@@ -56,7 +55,6 @@ def main():
 
     optimizer = optim.Adam(model.parameters(), lr=0.001)
     scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=scheduler_step_size, gamma=scheduler_gamma)
-
     # Set up trainer and train
     trainer = Trainer(
         model=model, 
@@ -66,7 +64,7 @@ def main():
         optimizer=optimizer,
         scheduler=scheduler,
         loss_fn=Loss(), 
-        epochs=16,
+        epochs=18,
         result_path=save_result_path,
         wrong_path=wrong_prediction_path
     )    
