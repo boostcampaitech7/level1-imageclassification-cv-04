@@ -7,8 +7,8 @@ import torch.optim as optim
 from src.dataset import CustomDataset
 from src.transforms import TransformSelector
 from src.models import ModelSelector
-from src.trainer import Trainer, Loss
-
+from src.trainer import Trainer, Loss, Focal_CELoss
+from src.layer_modification import layer_modification
 def main():
     # Set device
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -17,6 +17,7 @@ def main():
     traindata_dir = "./data/train"
     traindata_info_file = "./data/train.csv"
     save_result_path = "./train_result"
+    wrong_prediction_path = "./wrong_prediction"
 
     train_info = pd.read_csv(traindata_info_file)
     num_classes = len(train_info['target'].unique())
@@ -40,6 +41,7 @@ def main():
     # Set up model
     model_selector = ModelSelector(model_type='timm', num_classes=num_classes, model_name='resnet18', pretrained=True)
     model = model_selector.get_model()
+    model = layer_modification(model)
     model.to(device)
 
     # 스케줄러 초기화
@@ -53,7 +55,6 @@ def main():
 
     optimizer = optim.Adam(model.parameters(), lr=0.001)
     scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=scheduler_step_size, gamma=scheduler_gamma)
-
     # Set up trainer and train
     trainer = Trainer(
         model=model, 
@@ -65,8 +66,7 @@ def main():
         loss_fn=Loss(), 
         epochs=5,
         result_path=save_result_path
-    )
+    )    
     trainer.train()
-
 if __name__ == "__main__":
     main()

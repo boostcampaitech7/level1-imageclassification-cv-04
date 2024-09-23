@@ -17,7 +17,7 @@ class TransformSelector:
 class AlbumentationsTransform:
     def __init__(self, is_train: bool = True):
         common_transforms = [
-            A.Resize(224, 224),
+            A.Resize(448,448),
             A.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
             ToTensorV2()
         ]
@@ -26,8 +26,9 @@ class AlbumentationsTransform:
             self.transform = A.Compose(
                 [
                     A.HorizontalFlip(p=0.5),
-                    A.Rotate(limit=15),
-                    A.RandomBrightnessContrast(p=0.2),
+                    A.Rotate(limit=20),
+                    A.RandomBrightnessContrast(p=0.25),
+                    A.Blur()
                 ] + common_transforms
             )
         else:
