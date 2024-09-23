@@ -9,6 +9,9 @@ from src.transforms import TransformSelector
 from src.models import ModelSelector
 from src.trainer import Trainer, Loss, Focal_CELoss
 from src.layer_modification import layer_modification
+from src.boosting_trainer import BoostingTrainer
+
+
 def main():
     # Set device
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -39,11 +42,10 @@ def main():
     val_loader = DataLoader(val_dataset, batch_size=64, shuffle=False)
 
     # Set up model
-    model_selector = ModelSelector(model_type='timm', num_classes=num_classes, model_name='resnet18', pretrained=True)
+    model_selector = ModelSelector(model_type='timm', num_classes=num_classes, model_name='eva02_large_patch14_448.mim_m38m_ft_in22k_in1k', pretrained=True)
     model = model_selector.get_model()
     model = layer_modification(model)
     model.to(device)
-
     # 스케줄러 초기화
     scheduler_step_size = 30  # 매 30step마다 학습률 감소
     scheduler_gamma = 0.1  # 학습률을 현재의 10%로 감소
@@ -56,7 +58,20 @@ def main():
     optimizer = optim.Adam(model.parameters(), lr=0.001)
     scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=scheduler_step_size, gamma=scheduler_gamma)
     # Set up trainer and train
-    trainer = Trainer(
+    # trainer = Trainer(
+    #     model=model, 
+    #     device=device, 
+    #     train_loader=train_loader,
+    #     val_loader=val_loader, 
+    #     optimizer=optimizer,
+    #     scheduler=scheduler,
+    #     loss_fn=Loss(), 
+    #     epochs=5,
+    #     result_path=save_result_path
+    # )    
+    # trainer.train()
+    
+    boostingtrainer = BoostingTrainer(
         model=model, 
         device=device, 
         train_loader=train_loader,
@@ -64,9 +79,10 @@ def main():
         optimizer=optimizer,
         scheduler=scheduler,
         loss_fn=Loss(), 
-        epochs=5,
-        result_path=save_result_path
+        epochs=16,
+        result_path=save_result_path,
+        num_models=3
     )    
-    trainer.train()
+    boostingtrainer.train_boosting()
 if __name__ == "__main__":
     main()
