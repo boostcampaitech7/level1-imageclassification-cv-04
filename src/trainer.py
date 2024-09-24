@@ -6,6 +6,7 @@ from tqdm.auto import tqdm
 from PIL import Image
 from torchvision import transforms
 from sklearn.model_selection import StratifiedKFold
+from torch.utils.tensorboard import SummaryWriter  # 추가
 
 class Loss(nn.Module):
     def __init__(self):
@@ -88,6 +89,7 @@ class Trainer:
         loss_fn: nn.Module, 
         epochs: int,
         result_path: str,
+        writer: SummaryWriter,  # 추가
         wrong_path: str=None
     ):
         self.model = model
@@ -101,6 +103,7 @@ class Trainer:
         self.result_path = result_path
         self.best_models = []
         self.lowest_loss = float('inf')
+        self.writer = writer  # 추가
         self.wrong_path = wrong_path
 
     def save_model(self, epoch, loss):
@@ -119,7 +122,7 @@ class Trainer:
             torch.save(self.model.state_dict(), best_model_path)
             print(f"Save {epoch}epoch result. Loss = {loss:.4f}")
 
-    def train_epoch(self) -> float:
+    def train_epoch(self, epoch) -> float:  # epoch 인자 추가
         self.model.train()
         total_loss = 0.0
         progress_bar = tqdm(self.train_loader, desc="Training", leave=False)
@@ -135,10 +138,14 @@ class Trainer:
             self.scheduler.step()
             total_loss += loss.item()
             progress_bar.set_postfix(loss=loss.item())
-        print(f'train accuracy: {acc_cum / len(self.train_loader)}%')
-        return total_loss / len(self.train_loader)
+        avg_loss = total_loss / len(self.train_loader)
+        avg_acc = acc_cum / len(self.train_loader)
+        self.writer.add_scalar('Loss/train', avg_loss, epoch)  # 추가
+        self.writer.add_scalar('Accuracy/train', avg_acc, epoch)  # 추가
+        print(f'train accuracy: {avg_acc}%')
+        return avg_loss
 
-    def validate(self, log_wrong_predictions = False) -> float:
+    def validate(self, epoch, log_wrong_predictions = False) -> float:  # epoch 인자 추가
         self.model.eval()
         total_loss = 0.0
         progress_bar = tqdm(self.val_loader, desc="Validating", leave=False)
@@ -153,17 +160,21 @@ class Trainer:
                 progress_bar.set_postfix(loss=loss.item())
                 if log_wrong_predictions:
                     self.save_wrong_image(images, outputs, targets)
-            print(f'validation accuracy: {acc_cum / len(self.val_loader)}%')
-        return total_loss / len(self.val_loader)
+        avg_loss = total_loss / len(self.val_loader)
+        avg_acc = acc_cum / len(self.val_loader)
+        self.writer.add_scalar('Loss/val', avg_loss, epoch)  # 추가
+        self.writer.add_scalar('Accuracy/val', avg_acc, epoch)  # 추가
+        print(f'validation accuracy: {avg_acc}%')
+        return avg_loss
 
     def train(self) -> None:
         for epoch in range(self.epochs):
             print(f"Epoch {epoch+1}/{self.epochs}")
-            train_loss = self.train_epoch()
+            train_loss = self.train_epoch(epoch)  # epoch 인자 추가
             if epoch < self.epochs - 1:
-                val_loss = self.validate()
+                val_loss = self.validate(epoch)  # epoch 인자 추가
             else:
-                val_loss = self.validate(log_wrong_predictions=True)
+                val_loss = self.validate(epoch, log_wrong_predictions=True)  # epoch 인자 추가
             print(f"Epoch {epoch+1}, Train Loss: {train_loss:.4f}, Validation Loss: {val_loss:.4f}\n")
             self.save_model(epoch, val_loss)
             self.scheduler.step()

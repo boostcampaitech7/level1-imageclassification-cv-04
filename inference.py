@@ -7,6 +7,7 @@ from src.dataset import CustomDataset
 from src.transforms import TransformSelector
 from src.models import ModelSelector
 from src.utils import inference
+from src.layer_modification import layer_modification
 
 def main():
     # Set device
@@ -31,7 +32,8 @@ def main():
     # Load model
     model_selector = ModelSelector(model_type='timm', num_classes=num_classes, model_name='eva02_large_patch14_448.mim_m38m_ft_in22k_in1k', pretrained=False)
     model = model_selector.get_model()
-    
+    model = layer_modification(model)
+
     # Load the best model from ./train_result/best_model.pt
     model_path = os.path.join("./train_result", "best_model.pt")
     model.load_state_dict(torch.load(model_path, map_location=device))
@@ -44,6 +46,7 @@ def main():
     test_info['target'] = predictions
     test_info = test_info.reset_index().rename(columns={"index": "ID"})
     test_info.to_csv("output.csv", index=False)
+    print("Inference completed and results saved to output.csv")
 
 if __name__ == "__main__":
     main()

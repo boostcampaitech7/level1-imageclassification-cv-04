@@ -2,6 +2,7 @@ data/
 train_result/
 output.csv
 experiment_logs/
+logs/
 # Created by https://www.toptal.com/developers/gitignore/api/visualstudiocode,python,linux
 # Edit at https://www.toptal.com/developers/gitignore?templates=visualstudiocode,python,linux
 
