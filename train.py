@@ -4,12 +4,14 @@ import pandas as pd
 from sklearn.model_selection import train_test_split
 import torch.optim as optim
 import argparse
+from torch.utils.tensorboard import SummaryWriter  # 추가
 
 from src.dataset import CustomDataset
 from src.transforms import TransformSelector
 from src.models import ModelSelector
 from src.trainer import Trainer, Loss, Focal_CELoss
 from src.layer_modification import layer_modification
+
 def main(args):
     # Set device
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -52,6 +54,9 @@ def main(args):
     optimizer = optim.Adam(model.parameters(), lr=args.learning_rate)
     scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=scheduler_step_size, gamma=args.scheduler_gamma)
 
+    # TensorBoard SummaryWriter 초기화
+    writer = SummaryWriter(log_dir=args.log_dir)
+
     # Set up trainer and train
     trainer = Trainer(
         model=model, 
@@ -62,22 +67,26 @@ def main(args):
         scheduler=scheduler,
         loss_fn=Loss(), 
         epochs=args.epochs,
-        result_path=args.save_result_path
+        result_path=args.save_result_path,
+        writer=writer  # 추가
     )
     trainer.train()
+    writer.close()  # 추가
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Train image classification model")
     parser.add_argument("--traindata_dir", type=str, default="./data/train", help="Path to training data directory")
     parser.add_argument("--traindata_info_file", type=str, default="./data/train.csv", help="Path to training data info file")
     parser.add_argument("--save_result_path", type=str, default="./train_result", help="Path to save training results")
+    parser.add_argument("--log_dir", type=str, default="./logs", help="Path to save TensorBoard logs")  # 추가
     
     parser.add_argument("--val_split", type=float, default=0.2, help="Validation split ratio")
     parser.add_argument("--transform_type", type=str, default="albumentations", help="Type of data transforms to use")
     parser.add_argument("--batch_size", type=int, default=64, help="Batch size for training and validation")
 
     parser.add_argument("--model_type", type=str, default="timm", help="Type of model to use")
-    parser.add_argument("--model_name", type=str, default="resnet18", help="Name of the model")
-    parser.add_argument("--pretrained", type=bool, default=True, help="Whether to use pretrained weights")\
+    parser.add_argument("--model_name", type=str, default="eva02_large_patch14_448.mim_m38m_ft_in22k_in1k", help="Name of the model")
+    parser.add_argument("--pretrained", type=bool, default=True, help="Whether to use pretrained weights")
     
     parser.add_argument("--learning_rate", type=float, default=0.001, help="Initial learning rate")
     parser.add_argument("--epochs_per_lr_decay", type=int, default=2, help="Number of epochs before learning rate decay")
