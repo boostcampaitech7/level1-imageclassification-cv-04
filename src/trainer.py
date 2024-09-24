@@ -8,9 +8,12 @@ from torchvision import transforms
 from sklearn.model_selection import StratifiedKFold
 
 class Loss(nn.Module):
-    def __init__(self):
+    def __init__(self, label_smoothing = None, reduce = True):
         super(Loss, self).__init__()
-        self.loss_fn = nn.CrossEntropyLoss(label_smoothing = 0.12)
+        if reduce:
+            self.loss_fn = nn.CrossEntropyLoss(label_smoothing = label_smoothing)
+        else:
+            self.loss_fn = nn.CrossEntropyLoss(label_smoothing = label_smoothing, reduction = 'none')
 
     def forward(self, outputs: torch.Tensor, targets: torch.Tensor) -> torch.Tensor:
         return self.loss_fn(outputs, targets)
@@ -149,6 +152,7 @@ class Trainer:
                 outputs = self.model(images)
                 acc_cum += self.accuracy(outputs, targets)
                 loss = self.loss_fn(outputs, targets)
+                loss = loss.mean()
                 total_loss += loss.item()
                 progress_bar.set_postfix(loss=loss.item())
                 if log_wrong_predictions:

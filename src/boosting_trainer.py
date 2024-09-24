@@ -32,7 +32,7 @@ class BoostingTrainer(Trainer):
         if fix:
             return boosting_factor
         else:
-            return np.exp(1/(self.num_models - len(self.models) + 1))
+            return np.exp(1/len(self.models))
         
     
     def train_epoch_boosting(self, model, penalty=None):
@@ -42,18 +42,29 @@ class BoostingTrainer(Trainer):
         model.train()
         total_loss = 0.0
         acc_cum = 0
-        progress_bar = tqdm(self.train_loader, desc='Training with Boosting', leave = False)
+        progress_bar = tqdm(self.train_loader, desc='Training with Boosting')
         
-        for images, targets in progress_bar:
+        for batch_idx, (images, targets) in enumerate(progress_bar):
             images, targets = images.to(self.device), targets.to(self.device)
             self.optimizer.zero_grad()
             outputs = model(images)
             acc_cum += self.accuracy(outputs, targets)
-            loss = self.loss_fn(outputs, targets)
             
             # 틀린 예측에 대한 가중치 적용
             if penalty is not None:
-                loss = loss * penalty.to(self.device)
+                loss = self.loss_fn(outputs, targets)
+                start_idx = batch_idx * len(targets)
+                end_idx = start_idx + len(targets)
+                batch_penalty = penalty[start_idx:end_idx]
+                loss = loss * batch_penalty.to(self.device)
+                loss = loss.mean()
+            else:
+                loss = self.loss_fn(outputs, targets)
+            print(f"Loss: {loss}, Loss.shape: {loss.shape}, type of Loss: {type(loss)}") # 확인하기 위한 코드
+            try:
+                print(f"Length of Loss: {len(loss)}")
+            except:
+                pass
             
             loss.backward()
             self.optimizer.step()
@@ -69,13 +80,13 @@ class BoostingTrainer(Trainer):
         부스팅을 적용하여 여러 모델을 학습
         '''
         # 첫 번째 모델을 학습
-        for epoch in range(self.epochs):
-            print(f"Epoch {epoch+1}/{self.epochs}")
-            train_loss = self.train_epoch_boosting(self.models[0])
-            val_loss = self.validate()
-            print(f"Epoch {epoch+1}, Train Loss: {train_loss: .4f}, Validation Loss: {val_loss: .4f}\n")
-            self.save_model(epoch, val_loss)
-            self.scheduler.step()
+        # for epoch in range(self.epochs):
+        #     print(f"Epoch {epoch+1}/{self.epochs}")
+        #     train_loss = self.train_epoch_boosting(self.models[0])
+        #     val_loss = self.validate()
+        #     print(f"Epoch {epoch+1}, Train Loss: {train_loss: .4f}, Validation Loss: {val_loss: .4f}\n")
+        #     self.save_model(epoch, val_loss)
+        #     self.scheduler.step()
             
         # 부스팅을 적용해 추가 모델 학습
         for i in range(1, self.num_models):
@@ -89,7 +100,8 @@ class BoostingTrainer(Trainer):
                     with torch.no_grad():
                         all_outputs = []
                         all_targets = []
-                        for images, targets in self.train_loader:
+                        progress_bar = tqdm(self.train_loader, desc=f'Calculating Penalty from previous model {i}', leave = False)
+                        for images, targets in progress_bar:
                             images, targets = images.to(self.device), targets.to(self.device)
                             outputs = self.models[-1](images)
                             all_outputs.append(outputs)
@@ -97,6 +109,11 @@ class BoostingTrainer(Trainer):
                         all_outputs = torch.cat(all_outputs, dim=0)
                         all_targets = torch.cat(all_targets, dim=0)
                         penalty = self.boost_weights(all_outputs, all_targets)
+                        print(f"Penalty: {penalty}, Penalty.shape: {penalty.shape}, Type of Penalty: {type(penalty)}") # 확인하기 위한 코드
+                        try:
+                            print(f"Length of Loss: {len(penalty)}")
+                        except:
+                            pass
                 
                 train_loss = self.train_epoch_boosting(new_model, penalty)
                 val_loss = self.validate()
@@ -127,6 +144,7 @@ class BoostingTrainer(Trainer):
         for i in range(self.num_models):
             model = model_selector = ModelSelector(model_type='timm', num_classes=500, model_name= self.model_name, pretrained=False)
             model = model_selector.get_model()
+            model = layer_modification(model)
             # Load the best model from ./train_result/best_model.pt
             model_path = os.path.join(f"./train_result/{i}th model", "best_model.pt")
             model.load_state_dict(torch.load(model_path, map_location=self.device))
