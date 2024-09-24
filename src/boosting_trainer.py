@@ -24,18 +24,15 @@ class BoostingTrainer(Trainer):
         if self.fix_boosting_factor:
             weights[preds != targets] = self.init_boosting_factor
         else:
-            weights[preds != targets] = self.set_boosting_factor(init = self.init_boosting_factor, fix = self.fix_boosting_factor)
+            weights[preds != targets] = self.set_boosting_factor()
         return weights
     
-    def set_boosting_factor(self, init = 1, fix = True):
-        boosting_factor = init
-        if fix:
-            return boosting_factor
-        else:
-            return np.exp(1/len(self.models))
+    def set_boosting_factor(self):
+        return 1
+        # return np.exp(1/(len(self.models)+1))
         
     
-    def train_epoch_boosting(self, model, penalty=None):
+    def train_epoch_boosting(self, model):
         '''
         부스팅을 적용한 학습 (1 에폭)
         '''
@@ -44,27 +41,25 @@ class BoostingTrainer(Trainer):
         acc_cum = 0
         progress_bar = tqdm(self.train_loader, desc='Training with Boosting')
         
-        for batch_idx, (images, targets) in enumerate(progress_bar):
+        for images, targets in progress_bar:
             images, targets = images.to(self.device), targets.to(self.device)
             self.optimizer.zero_grad()
+            
+            # 현재 모델 예측
             outputs = model(images)
             acc_cum += self.accuracy(outputs, targets)
             
             # 틀린 예측에 대한 가중치 적용
-            if penalty is not None:
-                loss = self.loss_fn(outputs, targets)
-                start_idx = batch_idx * len(targets)
-                end_idx = start_idx + len(targets)
-                batch_penalty = penalty[start_idx:end_idx]
-                loss = loss * batch_penalty.to(self.device)
+            if len(self.models): # 이전 모델이 존재하는 경우. 즉, Base 모델이 아닌 경우에 대해서만 Penalty 계산 후, 적용
+                previous_model = self.models[-1]
+                with torch.no_grad():
+                    prev_outputs = previous_model(images)
+                penalty_weights = self.boost_weights(prev_outputs, targets)
+                loss = self.loss_fn(outputs, targets) * penalty_weights.to(self.device)
                 loss = loss.mean()
             else:
                 loss = self.loss_fn(outputs, targets)
-            print(f"Loss: {loss}, Loss.shape: {loss.shape}, type of Loss: {type(loss)}") # 확인하기 위한 코드
-            try:
-                print(f"Length of Loss: {len(loss)}")
-            except:
-                pass
+                    
             
             loss.backward()
             self.optimizer.step()
@@ -85,40 +80,22 @@ class BoostingTrainer(Trainer):
         #     train_loss = self.train_epoch_boosting(self.models[0])
         #     val_loss = self.validate()
         #     print(f"Epoch {epoch+1}, Train Loss: {train_loss: .4f}, Validation Loss: {val_loss: .4f}\n")
-        #     self.save_model(epoch, val_loss)
+        #     self.save_model(epoch, val_loss, 'base')
         #     self.scheduler.step()
             
         # 부스팅을 적용해 추가 모델 학습
         for i in range(1, self.num_models):
             print(f"\nTraining Boosted Model {i+1}")
             new_model = self._clone_model(self.models[-1]) # 새로운 모델은 이전 모델과 동일하게 생성
-            penalty = None
             
             for epoch in range(self.epochs):
                 print(f"Epoch {epoch+1}/{self.epochs} for Boosted Model {i+1}")
-                if epoch == 0:
-                    with torch.no_grad():
-                        all_outputs = []
-                        all_targets = []
-                        progress_bar = tqdm(self.train_loader, desc=f'Calculating Penalty from previous model {i}', leave = False)
-                        for images, targets in progress_bar:
-                            images, targets = images.to(self.device), targets.to(self.device)
-                            outputs = self.models[-1](images)
-                            all_outputs.append(outputs)
-                            all_targets.append(targets)
-                        all_outputs = torch.cat(all_outputs, dim=0)
-                        all_targets = torch.cat(all_targets, dim=0)
-                        penalty = self.boost_weights(all_outputs, all_targets)
-                        print(f"Penalty: {penalty}, Penalty.shape: {penalty.shape}, Type of Penalty: {type(penalty)}") # 확인하기 위한 코드
-                        try:
-                            print(f"Length of Loss: {len(penalty)}")
-                        except:
-                            pass
-                
-                train_loss = self.train_epoch_boosting(new_model, penalty)
+                train_loss = self.train_epoch_boosting(new_model)
+                    
+                    
                 val_loss = self.validate()
                 print(f"Boosted Model {i+1}, Epoch {epoch+1}, Train Loss: {train_loss:.4f}, Validation Loss: {val_loss:.4f}\n")
-                self.save_model(epoch, val_loss)
+                self.save_model(epoch, val_loss, i)
                 self.scheduler.step()
             
             self.models.append(new_model)
@@ -183,3 +160,23 @@ class BoostingTrainer(Trainer):
         
         return acc
                 
+    def save_model(self, epoch, loss, num):
+        '''
+        모델을 저장하기 위한 함수
+        num: 몇 번째 앙상블 모델인지 확인 가능한 인자
+        '''
+        self.result_path = os.path.join(self.result_path, f'{num}th ensemble model')
+        os.makedirs(self.result_path, exist_ok=True)
+        current_model_path = os.path.join(self.result_path, f'model_epoch_{epoch}_loss_{loss:.4f}.pt')
+        torch.save(self.model.state_dict(), current_model_path)
+        self.best_models.append((loss, epoch, current_model_path))
+        self.best_models.sort()
+        if len(self.best_models) > 3:
+            _, _, path_to_remove = self.best_models.pop(-1)
+            if os.path.exists(path_to_remove):
+                os.remove(path_to_remove)
+        if loss < self.lowest_loss:
+            self.lowest_loss = loss
+            best_model_path = os.path.join(self.result_path, 'best_model.pt')
+            torch.save(self.model.state_dict(), best_model_path)
+            print(f"Save {epoch}epoch result. Loss = {loss:.4f}")
