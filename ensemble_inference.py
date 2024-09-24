@@ -32,7 +32,7 @@ def main():
     # Load model
     model_selector = ModelSelector(model_type='timm', num_classes=num_classes, model_name='eva02_large_patch14_448.mim_m38m_ft_in22k_in1k', pretrained=False)
     model = model_selector.get_model()
-    model = layer_modification(model)
+    # model = layer_modification(model)
     # Load the best model from ./train_result/best_model.pt
     model_path = os.path.join("./train_result", "best_model.pt")
     model.load_state_dict(torch.load(model_path, map_location=device))

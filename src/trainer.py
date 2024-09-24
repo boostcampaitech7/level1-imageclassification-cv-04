@@ -11,9 +11,9 @@ class Loss(nn.Module):
     def __init__(self, label_smoothing = None, reduce = True):
         super(Loss, self).__init__()
         if reduce:
-            self.loss_fn = nn.CrossEntropyLoss(label_smoothing = label_smoothing)
+            self.loss_fn = nn.CrossEntropyLoss()
         else:
-            self.loss_fn = nn.CrossEntropyLoss(label_smoothing = label_smoothing, reduction = 'none')
+            self.loss_fn = nn.CrossEntropyLoss(reduction = 'none')
 
     def forward(self, outputs: torch.Tensor, targets: torch.Tensor) -> torch.Tensor:
         return self.loss_fn(outputs, targets)

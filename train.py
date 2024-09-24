@@ -78,8 +78,8 @@ def main():
         val_loader=val_loader, 
         optimizer=optimizer,
         scheduler=scheduler,
-        loss_fn=Loss(label_smoothing = 0.12, reduce = False), 
-        epochs=1,
+        loss_fn=Loss(reduce = False), 
+        epochs=10,
         result_path=save_result_path,
         num_models=3
     )    
