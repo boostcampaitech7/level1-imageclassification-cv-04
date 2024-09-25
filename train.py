@@ -79,7 +79,7 @@ def main():
         optimizer=optimizer,
         scheduler=scheduler,
         loss_fn=Loss(reduce = False), 
-        epochs=10,
+        epochs=16,
         result_path=save_result_path,
         num_models=3
     )    

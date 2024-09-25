@@ -12,17 +12,7 @@ class BoostingTrainer(Trainer):
     def __init__(self, *args, num_models=3, init_boosting_factor = 1, fix_boosting_factor = False, **kwargs):
         super().__init__(*args, **kwargs)
         self.num_models = num_models # 앙상블에 사용할 모델 수
-        #### 임시
-        model_selector = ModelSelector(model_type='timm', num_classes=500, model_name='eva02_large_patch14_448.mim_m38m_ft_in22k_in1k', pretrained=False)
-        model = model_selector.get_model()
-        model = layer_modification(model)
-        self.model_path = os.path.join("./train_result/0th ensemble model", "best_model.pt")
-        model.load_state_dict(torch.load(self.model_path, map_location=self.device))
-        model.to(self.device)
-        self.models = [model]
-        
-        ####
-        # self.models = [self.model] # 현재 담겨 있는 self.model이 Base Model이 될 예정
+        self.models = [self.model] # 현재 담겨 있는 self.model이 Base Model이 될 예정
         self.init_boosting_factor = init_boosting_factor
         self.fix_boosting_factor = fix_boosting_factor
         self.model_name = 'eva02_large_patch14_448.mim_m38m_ft_in22k_in1k'
