@@ -6,22 +6,23 @@ from src.models import ModelSelector
 from src.layer_modification import layer_modification
 import os
 from src.freeze import freeze
+import copy
 
 class BoostingTrainer(Trainer):
     def __init__(self, *args, num_models=3, init_boosting_factor = 1, fix_boosting_factor = False, **kwargs):
         super().__init__(*args, **kwargs)
         self.num_models = num_models # 앙상블에 사용할 모델 수
         #### 임시
-        # model_selector = ModelSelector(model_type='timm', num_classes=500, model_name='eva02_large_patch14_448.mim_m38m_ft_in22k_in1k', pretrained=False)
-        # model = model_selector.get_model()
-        # model = layer_modification(model)
-        # self.model_path = os.path.join("./train_result/baseth ensemble model", "best_model.pt")
-        # model.load_state_dict(torch.load(self.model_path, map_location=self.device))
-        # model.to(self.device)
-        # self.models = [model]
+        model_selector = ModelSelector(model_type='timm', num_classes=500, model_name='eva02_large_patch14_448.mim_m38m_ft_in22k_in1k', pretrained=False)
+        model = model_selector.get_model()
+        model = layer_modification(model)
+        self.model_path = os.path.join("./train_result/0th ensemble model", "best_model.pt")
+        model.load_state_dict(torch.load(self.model_path, map_location=self.device))
+        model.to(self.device)
+        self.models = [model]
         
         ####
-        self.models = [self.model] # 현재 담겨 있는 self.model이 Base Model이 될 예정
+        # self.models = [self.model] # 현재 담겨 있는 self.model이 Base Model이 될 예정
         self.init_boosting_factor = init_boosting_factor
         self.fix_boosting_factor = fix_boosting_factor
         self.model_name = 'eva02_large_patch14_448.mim_m38m_ft_in22k_in1k'
@@ -39,7 +40,8 @@ class BoostingTrainer(Trainer):
         return weights
     
     def set_boosting_factor(self):
-        return np.exp(1/(len(self.models)+0.5))
+        return 1 + np.exp(-0.2 * len(self.models))
+        # return np.exp(1/(len(self.models)+0.5))
         
     
     def train_epoch_boosting(self, model, previous_model = None):
@@ -64,14 +66,14 @@ class BoostingTrainer(Trainer):
                 previous_model.eval()
                 with torch.no_grad():
                     prev_outputs = previous_model(images)
-                    # print('이전 모델의 정확도:',self.accuracy(prev_outputs, targets))
+                    print('이전 모델의 정확도:',self.accuracy(prev_outputs, targets))
                     penalty_weights = self.boost_weights(prev_outputs, targets)
                 loss = self.loss_fn(outputs, targets) * penalty_weights.to(self.device)
                 loss = loss.mean()
             else:
                 loss = self.loss_fn(outputs, targets)
-                    
-            # print('현재 모델의 정확도:', self.accuracy(outputs, targets))
+                loss = loss.mean()
+            print('현재 모델의 정확도:', self.accuracy(outputs, targets))
             loss.backward()
             self.optimizer.step()
             self.scheduler.step()
@@ -119,68 +121,69 @@ class BoostingTrainer(Trainer):
         i: ith ensemble model
         '''
         model_selector = ModelSelector(model_type='timm', num_classes=500, model_name= self.model_name, pretrained=True)
-        cloned_model = model_selector.get_model()
-        cloned_model = layer_modification(model)
+        cloned_model = copy.deepcopy(model_selector.get_model())
+        cloned_model = layer_modification(cloned_model)
         # cloned_model.load_state_dict(model.state_dict()) # 파라미터를 복사
-        model_path = os.path.join(f"./train_result/{i}th ensemble model", "best_model.pt")
+        model_path = os.path.join(f"./train_result/{i-1}th ensemble model", "best_model.pt")
         cloned_model.load_state_dict(torch.load(model_path, map_location=self.device))
+        self.models[-1] = freeze(self.models[-1])
         cloned_model.to(self.device)
         return cloned_model
     
     
-    def validate_ensemble(self):
-        best_models = []
-        # Load all models
-        for i in range(self.num_models):
-            model = model_selector = ModelSelector(model_type='timm', num_classes=500, model_name= self.model_name, pretrained=False)
-            model = model_selector.get_model()
-            model = layer_modification(model)
-            # Load the best model from ./train_result/best_model.pt
-            model_path = os.path.join(f"./train_result/{i}th model", "best_model.pt")
-            model.load_state_dict(torch.load(model_path, map_location=self.device))
-            model.to(self.device)
-            model.eval()
-            best_models.append(model)
-        with torch.no_grad():
-            progress_bar = tqdm(self.val_loader, desc = 'Final Validation', leave = False)
-            all_predictions = []
-            all_labels = []
+    # def validate_ensemble(self):
+    #     best_models = []
+    #     # Load all models
+    #     for i in range(self.num_models):
+    #         model = model_selector = ModelSelector(model_type='timm', num_classes=500, model_name= self.model_name, pretrained=False)
+    #         model = model_selector.get_model()
+    #         model = layer_modification(model)
+    #         # Load the best model from ./train_result/best_model.pt
+    #         model_path = os.path.join(f"./train_result/{i}th model", "best_model.pt")
+    #         model.load_state_dict(torch.load(model_path, map_location=self.device))
+    #         model.to(self.device)
+    #         model.eval()
+    #         best_models.append(model)
+    #     with torch.no_grad():
+    #         progress_bar = tqdm(self.val_loader, desc = 'Final Validation', leave = False)
+    #         all_predictions = []
+    #         all_labels = []
         
-            for images, targets in progress_bar:
-                images, targets = images.to(self.device), targets.to(self.device)
+    #         for images, targets in progress_bar:
+    #             images, targets = images.to(self.device), targets.to(self.device)
                 
-                # Initialize output with zeros
-                outputs = torch.zeros((images.size(0), 500), device=self.device)
+    #             # Initialize output with zeros
+    #             outputs = torch.zeros((images.size(0), 500), device=self.device)
                 
-                # Accumulate predictions from all models
-                for i in range(self.num_models):
-                    outputs += best_models[i](images)
+    #             # Accumulate predictions from all models
+    #             for i in range(self.num_models):
+    #                 outputs += best_models[i](images)
                 
-                # Average the predictions
-                outputs /= self.num_models
+    #             # Average the predictions
+    #             outputs /= self.num_models
                 
-                # Store predictions and labels
-                all_predictions.append(outputs.cpu().numpy())
-                all_labels.append(targets.cpu().numpy())
+    #             # Store predictions and labels
+    #             all_predictions.append(outputs.cpu().numpy())
+    #             all_labels.append(targets.cpu().numpy())
             
-            # Concatenate all predictions and labels
-            all_predictions = np.concatenate(all_predictions, axis=0)
-            all_labels = np.concatenate(all_labels, axis=0)
+    #         # Concatenate all predictions and labels
+    #         all_predictions = np.concatenate(all_predictions, axis=0)
+    #         all_labels = np.concatenate(all_labels, axis=0)
             
-            # Calculate accuracy
-            acc = self.accuracy(all_predictions, all_labels)
-            print(f'Ensemble Accuracy: {acc:.2f}%')
+    #         # Calculate accuracy
+    #         acc = self.accuracy(all_predictions, all_labels)
+    #         print(f'Ensemble Accuracy: {acc:.2f}%')
         
-        return acc
+    #     return acc
                 
     def save_model(self, epoch, loss, num):
         '''
         모델을 저장하기 위한 함수
         num: 몇 번째 앙상블 모델인지 확인 가능한 인자
         '''
-        self.result_path = os.path.join(self.result_path, f'{num}th ensemble model')
-        os.makedirs(self.result_path, exist_ok=True)
-        current_model_path = os.path.join(self.result_path, f'model_epoch_{epoch}_loss_{loss:.4f}.pt')
+        ensemble_path = os.path.join(self.result_path, f'{num}th ensemble model')
+        os.makedirs(ensemble_path, exist_ok=True)
+        current_model_path = os.path.join(ensemble_path, f'model_epoch_{epoch}_loss_{loss:.4f}.pt')
         torch.save(self.model.state_dict(), current_model_path)
         self.best_models.append((loss, epoch, current_model_path))
         self.best_models.sort()
@@ -190,6 +193,6 @@ class BoostingTrainer(Trainer):
                 os.remove(path_to_remove)
         if loss < self.lowest_loss:
             self.lowest_loss = loss
-            best_model_path = os.path.join(self.result_path, 'best_model.pt')
+            best_model_path = os.path.join(ensemble_path, 'best_model.pt')
             torch.save(self.model.state_dict(), best_model_path)
             print(f"Save {epoch}epoch result. Loss = {loss:.4f}")
