@@ -20,7 +20,6 @@ from tqdm.auto import tqdm
 import torch.nn.functional as F
 from PIL import Image
 
-# 수정된 inference 함수
 def inference(model: torch.nn.Module, device: torch.device, test_loader: torch.utils.data.DataLoader):
     model.to(device)
     model.eval()
