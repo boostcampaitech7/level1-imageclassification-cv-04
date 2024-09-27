@@ -92,7 +92,7 @@ if __name__ == "__main__":
     parser.add_argument("--epochs_per_lr_decay", type=int, default=2, help="Number of epochs before learning rate decay")
     parser.add_argument("--scheduler_gamma", type=float, default=0.1, help="Learning rate decay factor")
 
-    parser.add_argument("--epochs", type=int, default=10, help="Number of epochs to train")
+    parser.add_argument("--epochs", type=int, default=5, help="Number of epochs to train")
 
     args = parser.parse_args()
     main(args)
