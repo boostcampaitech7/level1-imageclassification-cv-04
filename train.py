@@ -20,7 +20,7 @@ def main():
     traindata_dir = "./data/train"
     traindata_info_file = "./data/train.csv"
     save_result_path = "./train_result"
-    wrong_prediction_path = "./wrong_prediction"
+    wrong_prediction_path = "./wrong_prediction_ensemble"
 
     train_info = pd.read_csv(traindata_info_file)
     num_classes = len(train_info['target'].unique())
@@ -51,12 +51,14 @@ def main():
     scheduler_gamma = 0.1  # 학습률을 현재의 10%로 감소
     # 한 epoch당 step 수 계산
     steps_per_epoch = len(train_loader)
-    # 2 epoch마다 학습률을 감소시키는 스케줄러 선언
-    epochs_per_lr_decay = 2 
+    # 1 epoch마다 학습률을 감소시키는 스케줄러 선언
+    epochs_per_lr_decay = 1
     scheduler_step_size = steps_per_epoch * epochs_per_lr_decay
 
     optimizer = optim.Adam(model.parameters(), lr=0.001)
     scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=scheduler_step_size, gamma=scheduler_gamma)
+    
+    ### 한 개의 모델만으로 학습할 때 사용
     # Set up trainer and train
     # trainer = Trainer(
     #     model=model, 
@@ -70,6 +72,7 @@ def main():
     #     result_path=save_result_path
     # )    
     # trainer.train()
+    ###
     
     boostingtrainer = BoostingTrainer(
         model=model, 
@@ -78,10 +81,11 @@ def main():
         val_loader=val_loader, 
         optimizer=optimizer,
         scheduler=scheduler,
-        loss_fn=Loss(reduce = False), 
-        epochs=16,
+        loss_fn=Loss(label_smoothing = 0.1, reduce = False), 
+        epochs=5,
         result_path=save_result_path,
-        num_models=3
+        num_models=3,
+        wrong_path = wrong_prediction_path
     )    
     boostingtrainer.train_boosting()
 if __name__ == "__main__":

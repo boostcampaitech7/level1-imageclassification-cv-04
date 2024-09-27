@@ -6,8 +6,9 @@ import os
 from src.dataset import CustomDataset
 from src.transforms import TransformSelector
 from src.models import ModelSelector
-from src.utils import inference
+from src.soft_utils import inference
 from src.layer_modification import layer_modification
+import numpy as np
 
 def main():
     # Set device
@@ -29,22 +30,19 @@ def main():
     test_dataset = CustomDataset(root_dir=testdata_dir, info_df=test_info, transform=test_transform, is_inference=True)
     test_loader = DataLoader(test_dataset, batch_size=64, shuffle=False, drop_last=False)
 
-    # Load model
-    model_selector = ModelSelector(model_type='timm', num_classes=num_classes, model_name='eva02_large_patch14_448.mim_m38m_ft_in22k_in1k', pretrained=False)
-    model = model_selector.get_model()
-    model = layer_modification(model)
-    # Load the best model from ./train_result/best_model.pt
-    model_path = os.path.join("./train_result/1th ensemble model", "best_model.pt")
-    model.load_state_dict(torch.load(model_path, map_location=device))
-    model.to(device)
-
+    # Load model1
+    model_selector_1 = ModelSelector(model_type='timm', num_classes=num_classes, model_name='eva02_large_patch14_448.mim_m38m_ft_in22k_in1k', pretrained=False)
+    model_1 = model_selector_1.get_model()
+    model_1 = layer_modification(model_1)
+    model_1_path = os.path.join("./train_result/1th ensemble model", "best_model.pt")
+    model_1.load_state_dict(torch.load(model_1_path, map_location=device))
+    model_1.to(device)
+    
     # Run inference
-    predictions = inference(model=model, device=device, test_loader=test_loader)
+    predictions_model_1 = inference(model=model_1, device=device, test_loader=test_loader)
 
-    # Save results
-    test_info['target'] = predictions
-    test_info = test_info.reset_index().rename(columns={"index": "ID"})
-    test_info.to_csv("output.csv", index=False)
-
+    # Save results as npy file
+    np.save('new_ensemble.npy', predictions_model_1)
+    print('1 saved')
 if __name__ == "__main__":
     main()

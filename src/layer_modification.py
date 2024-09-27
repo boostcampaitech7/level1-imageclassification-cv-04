@@ -8,15 +8,16 @@ def layer_modification(model):
         param.requires_grad = False
 
     # Classification head만 학습 가능하게 설정
-        model.model.head = nn.Sequential(
-            nn.BatchNorm1d(1024),
-            nn.Linear(1024, 2048),
-            nn.GELU(),
-            nn.BatchNorm1d(2048),
-            nn.Linear(2048, 1024),
-            nn.GELU(),
-            nn.BatchNorm1d(1024),
-            nn.Linear(1024, 500)
-        )
-        model.model.head.requires_grad = True
+        # model.model.head = nn.Sequential(
+        #     nn.BatchNorm1d(1024),
+        #     nn.Linear(1024, 2048),
+        #     nn.GELU(),
+        #     nn.BatchNorm1d(2048),
+        #     nn.Linear(2048, 1024),
+        #     nn.GELU(),
+        #     nn.BatchNorm1d(1024),
+        #     nn.Linear(1024, 500)
+        # )
+    model.model.head.weight.requires_grad = True
+    model.model.head.bias.requires_grad = True
     return model
