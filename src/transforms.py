@@ -26,9 +26,15 @@ class AlbumentationsTransform:
             self.transform = A.Compose(
                 [
                     A.HorizontalFlip(p=0.5),
-                    A.Rotate(limit=20),
-                    A.RandomBrightnessContrast(p=0.25),
-                    A.Blur()
+                    A.Rotate(limit=10,p=0.5),
+                    A.Affine(scale=(0.8, 1.2), shear=(-10, 10), p=0.5),
+                    A.RandomBrightnessContrast(p=0.2),
+                    A.GaussNoise(var_limit=(10.0, 50.0), p=0.5),
+                    # A.OneOf([
+                    #     A.CLAHE(clip_limit=4.0, tile_grid_size=(8, 8), p=0.5),
+                    # ], p=0.5),
+
+                    # A.ShiftScaleRotate(shift_limit=0.1, scale_limit=0.2, rotate_limit=15, p=0.5),
                 ] + common_transforms
             )
         else:

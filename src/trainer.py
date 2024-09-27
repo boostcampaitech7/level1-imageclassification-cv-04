@@ -2,18 +2,44 @@ import os
 import torch
 import torch.nn as nn
 import torch.optim as optim
+from typing import Optional
+
+
+
+
 from tqdm.auto import tqdm
 from PIL import Image
 from torchvision import transforms
 from sklearn.model_selection import StratifiedKFold
 from torch.utils.tensorboard import SummaryWriter  # 추가
 
+from torchvision.utils import save_image ##
+##mixup
+from timm.data.mixup import Mixup
+from timm.loss import LabelSmoothingCrossEntropy, SoftTargetCrossEntropy
+
 class Loss(nn.Module):
-    def __init__(self):
+    def __init__(self , mixup_fn=None):
         super(Loss, self).__init__()
-        self.loss_fn = nn.CrossEntropyLoss(label_smoothing = 0.12)
+        self.mixup_fn = mixup_fn
+        #추가 - eva참고
+        if self.mixup_fn is not None : 
+            #smoothing is hadled with mixup label transform
+            self.loss_fn = SoftTargetCrossEntropy()
+        # elif args.smoothing > 0.:
+        #     LabelSmoothingCrossEntropy(smoothing=args.smoothing)
+        else : 
+            self.loss_fn = nn.CrossEntropyLoss(label_smoothing = 0.12) 
 
     def forward(self, outputs: torch.Tensor, targets: torch.Tensor) -> torch.Tensor:
+        #
+        # print(f"(targets { targets.shape} , {outputs.shape}")
+        if targets.dim() >1 :
+            targets = targets.argmax(dim=1)  # Convert to class indices
+        # elif len(targets.shape) == 1:
+        #     # One-hot encoding of targets
+        #     targets = targets.view(-1, 1)  # Make it a column vector
+        
         return self.loss_fn(outputs, targets)
 
 class FocalLoss(nn.Module):
@@ -90,7 +116,8 @@ class Trainer:
         epochs: int,
         result_path: str,
         writer: SummaryWriter,  # 추가
-        wrong_path: str=None
+        wrong_path: str=None,
+        mixup_fn: Optional[Mixup] = None, # 추가
     ):
         self.model = model
         self.device = device
@@ -105,6 +132,8 @@ class Trainer:
         self.lowest_loss = float('inf')
         self.writer = writer  # 추가
         self.wrong_path = wrong_path
+        self.mixup_fn= mixup_fn
+        
 
     def save_model(self, epoch, loss):
         os.makedirs(self.result_path, exist_ok=True)
@@ -122,14 +151,24 @@ class Trainer:
             torch.save(self.model.state_dict(), best_model_path)
             print(f"Save {epoch}epoch result. Loss = {loss:.4f}")
 
+  
+            
     def train_epoch(self, epoch) -> float:  # epoch 인자 추가
         self.model.train()
         total_loss = 0.0
         progress_bar = tqdm(self.train_loader, desc="Training", leave=False)
         acc_cum = 0
+        
+        batch_idx = len(progress_bar) # 
+        # print(f"batch_idx {batch_idx}")
         for images, targets in progress_bar:
             images, targets = images.to(self.device), targets.to(self.device)
             self.optimizer.zero_grad()
+            
+            if self.mixup_fn is not None : #and batch_idx %4 == 0 : # 4step 주기로 mixup 적용  
+                images , targets = self.mixup_fn(images, targets)
+                # save_images(images ,"./augmenatation", batch_idx)
+            
             outputs = self.model(images)
             acc_cum += self.accuracy(outputs, targets)
             loss = self.loss_fn(outputs, targets)
@@ -138,6 +177,7 @@ class Trainer:
             self.scheduler.step()
             total_loss += loss.item()
             progress_bar.set_postfix(loss=loss.item())
+
         avg_loss = total_loss / len(self.train_loader)
         avg_acc = acc_cum / len(self.train_loader)
         self.writer.add_scalar('Loss/train', avg_loss, epoch)  # 추가
@@ -154,6 +194,8 @@ class Trainer:
             for images, targets in progress_bar:
                 images, targets = images.to(self.device), targets.to(self.device)
                 outputs = self.model(images)
+                # print(f"Outputs shape: {outputs.shape}, Targets shape: {targets.shape}")
+                
                 acc_cum += self.accuracy(outputs, targets)
                 loss = self.loss_fn(outputs, targets)
                 total_loss += loss.item()
@@ -197,6 +239,20 @@ class Trainer:
     def cross_validation(self):
         pass
     
-    def accuracy(self, predictions, targets):
-        acc = (targets == predictions.argmax(1)).sum().item() / len(targets) * 100
+    def accuracy(self, outputs, targets):
+        #acc = (targets == predictions.argmax(1)).sum().item() / len(targets) * 100
+         # predictions의 크기와 targets의 크기를 확인
+        
+        if targets.dim() >1 : #one hot encodeing 
+            targets = targets.argmax(dim=1)
+
+        predictions = outputs.argmax(dim=1)  # 예측 클래스 인덱스
+        
+        # targets와 predictions의 크기가 일치하는지 확인
+        # if predictions.size(0) != targets.size(0):
+        #     raise ValueError(f"Prediction size {predictions.size(0)} does not match target size {targets.size(0)}")
+
+        acc = (targets == predictions).sum().item() / targets.size(0) * 100  # 배치 크기로 나누기
+        
+        
         return acc

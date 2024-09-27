@@ -4,6 +4,8 @@ import pandas as pd
 from sklearn.model_selection import train_test_split
 import torch.optim as optim
 import argparse
+from timm.data.mixup import Mixup
+
 from torch.utils.tensorboard import SummaryWriter  # 추가
 
 from src.dataset import CustomDataset
@@ -41,6 +43,17 @@ def main(args):
     train_loader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True)
     val_loader = DataLoader(val_dataset, batch_size=args.batch_size, shuffle=False)
 
+    ##mixup 추가
+    mixup_fn = None
+    mixup_active = args.mixup > 0 or args.cutmix > 0. or args.cutmix_minmax is not None
+    
+    if mixup_active:
+        print("Mixup is activated!")
+        mixup_fn = Mixup(
+            mixup_alpha=args.mixup, cutmix_alpha=args.cutmix, cutmix_minmax=args.cutmix_minmax,
+            prob=args.mixup_prob, switch_prob=args.mixup_switch_prob, mode=args.mixup_mode,
+            label_smoothing=0.12, num_classes=num_classes)
+
     # Set up model
     model_selector = ModelSelector(model_type=args.model_type, num_classes=num_classes, model_name=args.model_name, pretrained=args.pretrained)
     model = model_selector.get_model()
@@ -65,10 +78,12 @@ def main(args):
         val_loader=val_loader, 
         optimizer=optimizer,
         scheduler=scheduler,
-        loss_fn=Loss(), 
+        loss_fn=Loss(mixup_fn=mixup_fn), 
         epochs=args.epochs,
         result_path=args.save_result_path,
-        writer=writer  # 추가
+        writer=writer,  # 추가
+        mixup_fn = mixup_fn,
+        wrong_path="./wrong"
     )
     trainer.train()
     writer.close()  # 추가
@@ -88,6 +103,23 @@ if __name__ == "__main__":
     parser.add_argument("--model_name", type=str, default="eva02_large_patch14_448.mim_m38m_ft_in22k_in1k", help="Name of the model")
     parser.add_argument("--pretrained", type=bool, default=True, help="Whether to use pretrained weights")
     
+    # * Mixup params
+    parser.add_argument('--mixup', type = float, default=0,
+                        help='mixup alpha, mixup enabled if > 0.')
+    parser.add_argument('--cutmix', type=float, default=0,
+                        help='cutmix alpha, cutmix enabled if > 0.')
+    parser.add_argument('--cutmix_minmax', type=float, nargs='+', default=None,
+                        help='cutmix min/max ratio, overrides alpha and enables cutmix if set (default: None)')
+    parser.add_argument('--mixup_prob', type=float, default=1.0,
+                        help='Probability of performing mixup or cutmix when either/both is enabled')
+    parser.add_argument('--mixup_switch_prob', type=float, default=0.5,
+                        help='Probability of switching to cutmix when both mixup and cutmix enabled')
+    parser.add_argument('--mixup_mode', type=str, default='batch',
+                        help='How to apply mixup/cutmix params. Per "batch", "pair", or "elem"')
+
+    # parser.add_argument('--smoothing', type=float, default=0,
+    #                     help='Label smoothing (default: 0.1)')
+
     parser.add_argument("--learning_rate", type=float, default=0.001, help="Initial learning rate")
     parser.add_argument("--epochs_per_lr_decay", type=int, default=2, help="Number of epochs before learning rate decay")
     parser.add_argument("--scheduler_gamma", type=float, default=0.1, help="Learning rate decay factor")

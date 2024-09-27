@@ -2,7 +2,7 @@ import torch
 from torch.utils.data import DataLoader
 import pandas as pd
 import os
-
+import numpy as np
 from src.dataset import CustomDataset
 from src.transforms import TransformSelector
 from src.models import ModelSelector
@@ -29,7 +29,7 @@ def main():
     test_dataset = CustomDataset(root_dir=testdata_dir, info_df=test_info, transform=test_transform, is_inference=True)
     test_loader = DataLoader(test_dataset, batch_size=64, shuffle=False, drop_last=False)
 
-    # Load model
+    # Load model ### 
     model_selector = ModelSelector(model_type='timm', num_classes=num_classes, model_name='eva02_large_patch14_448.mim_m38m_ft_in22k_in1k', pretrained=False)
     model = model_selector.get_model()
     model = layer_modification(model)
@@ -42,6 +42,8 @@ def main():
     # Run inference
     predictions = inference(model=model, device=device, test_loader=test_loader)
 
+    
+    ####
     # Save results
     test_info['target'] = predictions
     test_info = test_info.reset_index().rename(columns={"index": "ID"})
