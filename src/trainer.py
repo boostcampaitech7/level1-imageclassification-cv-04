@@ -174,7 +174,7 @@ class Trainer:
             if epoch < self.epochs - 1:
                 val_loss = self.validate(epoch)  # epoch 인자 추가
             else:
-                val_loss = self.validate(epoch, log_wrong_predictions=True)  # epoch 인자 추가
+                val_loss = self.validate(epoch, log_wrong_predictions=False)  # epoch 인자 추가
             print(f"Epoch {epoch+1}, Train Loss: {train_loss:.4f}, Validation Loss: {val_loss:.4f}\n")
             self.save_model(epoch, val_loss)
             self.scheduler.step()
