@@ -1,6 +1,7 @@
 import albumentations as A
 from albumentations.pytorch import ToTensorV2
 from PIL import Image
+from src.prewitt_edges import enhance_edges
 
 class TransformSelector:
     def __init__(self, transform_type: str):
@@ -25,9 +26,12 @@ class AlbumentationsTransform:
         if is_train:
             self.transform = A.Compose(
                 [
+                   # Albumentations 변환으로 사용
+                    A.Lambda(image=lambda x, **kwargs: enhance_edges(x)),
                     A.HorizontalFlip(p=0.5),
                     A.Rotate(limit=20),
                     A.RandomBrightnessContrast(p=0.25),
+                    A.GaussNoise(var_limit=(10.0, 50.0), p=0.5),
                     A.Blur()
                 ] + common_transforms
             )
